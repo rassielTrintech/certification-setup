@@ -1,0 +1,23 @@
+SET CWD = $ENV:CERT_LOCATION
+GETVM http://vms/windows10proB17003.box
+CONFIG
+	MEMORY=4GB
+    DISK=40GB
+    PORTS=3389, 80, 4024
+    IP=192.168.1.20
+START
+VOLUME CWD C:\Certification
+VOLUME $ENV:BACKUPS_LOCATION C:\Backups
+PROVISION
+	IF GET_SQL <> V2018 
+    	INSTALL_SQL(v: 2018, sa: $ENV:SA, password: $ENV:PASSWORD)
+        RESTORE_DB(name: $backupFile, location: C:\Backups)
+    IF GET_NET <> 45
+    	INSTALL_NET(45)
+	MKDIR C:\Certification
+    CREATE_VD(root: DefaultWebSite, name:Certification, location: C:\Certification)
+    INSTALL_REMOTE_DEBUGGER(port: 4024)
+
+SET CONNSTR = ENCRYPT($ENV:SA, $ENV:PASSWORD, $certDBName)
+UPDATE_WEB_CONFIG(file: Web.Config,section: appsettings, node: connStr, value: $CONNSTR)
+MSBUILD Reconciliation.sln /t:Rebuild /p:Configuration=Debug
